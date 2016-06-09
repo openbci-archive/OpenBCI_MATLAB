@@ -1,4 +1,0 @@
-%% start streaming in NTX_FIX_EXPERIMENT
-
-% load NTX_FIX_EXPERIMENT
-NTX_FIX_EXPERIMENT

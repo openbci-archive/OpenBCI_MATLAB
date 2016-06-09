@@ -49,20 +49,39 @@ openbci_constants;
 % initialize output buffers
 eeg_data = zeros(nb_packets,NB_CHANNELS);
 packet_numbers = zeros(nb_packets,1);
+read_state = 0;
 
 for ii=1:nb_packets
 
     offset = (ii-1)*DATA_PACKET_LENGTH;
 
     %warning(strcat('packet_start:', num2str(packet(1+offset))));
-    
     assignin('base', 'packet', packet);
 	assignin('base', 'offset', offset);
-	
-	
+	packet
+    offset
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % READ SERIAL BINARY
+    %
+    % START BYTE AND ID
+    if read_state = 1
+        if packet(1+offset) ~= PACKET_FIRST_WORD
+            warning('Invalid start byte')
+            return;
+        end
+        read_state = read_state + 1
+    % CHANNEL DATA
+    if read_state = 2
+
+
+
+
+
+
+
     % check if the first byte correspond to the
     % standard
-    if packet(1+offset) ~= PACKET_FIRST_WORD
+    if packet(1+offset) ~= PACKET_FIRST_WORD % PACKET_FIRST_WORD = 0xa0 or 160
 
         % show the packet for debuggin purpose
 		%warning('Invalid packet format:');
@@ -78,13 +97,18 @@ for ii=1:nb_packets
     if length(packet) < 33
 
         % show the packet for debuggin purpose
-		%warning('Invalid packet format:');
-        %packet
-		
+		warning('Invalid packet format:');
+        packet		
 		%pause;
 		
         return;
     end
+
+    if packet(length(packet)) ~= PACKET_LAST_WORD % PACKET_LAST_WORD = 0xc0 or 192
+        warning('Invalid end byte:')
+        packet(length(packet))
+        pause(2)
+        return
 	
 	
     
@@ -108,7 +132,7 @@ for ii=1:nb_packets
     % Refer to: http://docs.openbci.com/software/02-OpenBCI_Streaming_Data_Format#openbci-v3-data-format-interpreting-the-eeg-data
     %
     for j=1:length(eeg_data(ii))
-        eeg_data(ii,j) = eeg_data(ii,j)*(4.5 / 24.0 / (2^23 -1) * 1000000);
+        eeg_data(ii,j) = eeg_data(ii,j)*scale_fac_uVolts_per_count;
     end
 
 end
