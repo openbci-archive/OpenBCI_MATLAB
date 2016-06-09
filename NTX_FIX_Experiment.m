@@ -39,7 +39,7 @@ openbci = t_openbci;
 %clc;
 fprintf('Trial on-going\n')
 
-duration = 5;
+duration = 20;
 
 
 		% load constants
@@ -60,7 +60,7 @@ duration = 5;
 		%start streaming
 		openbci.interface.start_streaming();
 		
-		raw_data_storage = {};
+		raw_data_storage = [];
 
 		current_entry = [];
 
@@ -71,8 +71,6 @@ duration = 5;
 			openbci_constants;
 
 			if openbci.interface.com_port.BytesAvailable > 0
-                %[GI] fread(fileID,sizeA)
-                % 
 				packet_bytes = fread(openbci.interface.com_port,openbci.interface.com_port.BytesAvailable);
 									
 									
@@ -91,9 +89,9 @@ duration = 5;
 										
 										%fprintf('Entry:')
 										%current_entry = current_entry
-										eeg_data = eeg_data
+										eeg_data = eeg_data;
 
-										row = {};
+										row = [];
 										for col =1:length(eeg_data)
 											row = [row, eeg_data(col)];
 										end

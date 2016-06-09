@@ -100,6 +100,17 @@ for ii=1:nb_packets
     eeg_data(ii,6) = int24_to_int32(packet((18:20)+offset));
     eeg_data(ii,7) = int24_to_int32(packet((21:23)+offset));
     eeg_data(ii,8) = int24_to_int32(packet((24:26)+offset));
+
+    % Convert counts to microvolts
+    %
+    % Scale factor (Volts/count) = 4.5 Volts / gain / (2^23 - 1)
+    %
+    % Refer to: http://docs.openbci.com/software/02-OpenBCI_Streaming_Data_Format#openbci-v3-data-format-interpreting-the-eeg-data
+    %
+    for j=1:length(eeg_data(ii))
+        eeg_data(ii,j) = eeg_data(ii,j)*(4.5 / 24.0 / (2^23 -1) * 1000000);
+    end
+
 end
 
 end
