@@ -31,7 +31,7 @@ main()
 	int fd;								// File descriptor for the port
     int c;
     int res;
-    char buf[255];
+    char buf[33];
 
     struct termios oldtio,newtio;
 
@@ -49,7 +49,7 @@ main()
 	if(fd < 0)
 		printf("\n ERROR! In opening ttyUSB0\n");
 	else
-		printf("\n ttyUSB0 Opened Successfulllyyyyyy!!!!!!!!!!!!!!!!\n");
+		printf("\n ttyUSB0 Opened Successfully\n");
 
 
 
@@ -98,7 +98,7 @@ main()
 	/* Local Modes
 		ICANON = Enable canonical mode (is our board canonical?) */
 
-	newtio.c_lflag = ICANON;
+	// newtio.c_lflag = ICANON;
 	
 	/* Special Characters
 		MIN > 0, TIME == 0 (blocking read)
@@ -121,6 +121,9 @@ main()
 		TCSANOW = the change occurs immediately
 		&newtio = pointer to newtio */
 	tcsetattr(fd,TCSANOW,&newtio);
+
+	
+	
 	/* loop while waiting for input. normally we would do something
 	useful here */ 
 	while (STOP==FALSE) {
@@ -128,13 +131,19 @@ main()
 		/* after receiving SIGIO, wait_flag = FALSE, input is available
 		 and can be read */
 		// printf("%d",wait_flag);
-		if (wait_flag==FALSE) { 
-			printf(".\n");	
-			res = read(fd,buf,255);
-			buf[res]=0;
-			printf(":%s:%d\n", buf, res);
-			if (res==1) STOP=TRUE; /* stop loop if only a CR was input */
-			wait_flag = TRUE;      /* wait for new input */
+		if (wait_flag==FALSE) { 	
+			res = read(fd,buf,24);
+			buf[33]=0;
+			// for (int i=0;i<res;i++){
+			// 	printf("%d\n",buf[res]);
+			// }
+			printf(":buff-%s\n", buf);
+			printf(":number of bytes:%d\n", res);
+			if (res==0){
+				STOP=TRUE;		// stop loop if only a CR was input 
+				printf("STOPPED STREAM\n");
+			}
+			wait_flag = TRUE;			/* wait for new input */
 		}
 	}
 
@@ -145,8 +154,7 @@ main()
 }
 
 void signal_handler_IO (int status){
-	printf("received SIGIO signal.\n");
+	printf("-------------------received SIGIO signal---------------------------\n");
 	wait_flag = FALSE;
-	printf("sup dawg");
-	printf("%d",wait_flag);
+	// printf("wait flag: %d\n",wait_flag);
 }
