@@ -24,39 +24,32 @@ NOTES:
 volatile int STOP=FALSE; 
 
 void signal_handler_IO (int status);   /* definition of signal handler */
+float byte_parser (unsigned char buf[], int res);
 int wait_flag=TRUE;    
 
 main()
 {
 	int fd;								// File descriptor for the port
-    int c;
-    int res;
-    char buf[1024];
-    // Declare the serial port struct
-    struct termios serialportsettings;
+	int c;
+	int res;
+	unsigned char buf[1024];
+	struct termios serialportsettings;  // Declare the serial port struct
+	struct sigaction saio;				// Declare signals
+	fd = open(PORT, O_RDWR | O_NOCTTY); // declare serial port file descriptor
 
-	/* definition of signal action 
-	allows the calling process to examine and/or specify the action to be associated 
-	with a specific signal */
-	struct sigaction saio;
+	//*****************************************************************************************
+	//	SERIAL PORT SETUP 
 
-	fd = open(PORT, O_RDWR | O_NOCTTY);
-
-
-	if(fd < 0)
+	// Attempt to read attributes of serial port
+	if(tcgetattr(fd,&serialportsettings) != 0)
 		printf("\n ERROR! In opening ttyUSB0\n");
 	else
 		printf("\n ttyUSB0 Opened Successfully\n");
-
-
-	/**********************************************************
-		SERIAL PORT SETUP 
-	*/
-    
-    tcgetattr(fd,&serialportsettings);				// Gets the parameters associated with the object (fd) and stores them
-    cfsetispeed(&serialportsettings,B115200);		// set the input baud rate
-	cfsetospeed(&serialportsettings,B115200);		// set the output baud rate	
 	
+	//Baud Rate information (Baud=115200)
+	cfsetispeed(&serialportsettings,B115200);		// set the input baud rate
+	cfsetospeed(&serialportsettings,B115200);		// set the output baud rate	
+
 	//Hardware Information
 	serialportsettings.c_cflag &= ~PARENB;			// set the parity bit (0)
 	serialportsettings.c_cflag &= ~CSTOPB;			// stop bits = 1
@@ -64,64 +57,38 @@ main()
 	serialportsettings.c_cflag |= CS8;				// set the data bits = 8
 	serialportsettings.c_cflag &= ~CRTSCTS;			// turn off hardware based flow control (RTS/CTS)
 	serialportsettings.c_cflag |= CREAD | CLOCAL;	// turn on the receiver of the serial port (CREAD)
-	
-	//Input data flags
-	serialportsettings.c_iflag &= ~(IXON | IXOFF | IXANY);
+	//Input data flags (not needed?)
+	// serialportsettings.c_iflag &= ~(IXON | IXOFF | IXANY);
 	//Echoing and character processing flags
-	serialportsettings.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-	//Output data flags
-	serialportsettings.c_oflag |= OPOST;
+	serialportsettings.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); //no echoing, input proc, signals, or background proc halting
+	//Output data flags ("for ")
+	// serialportsettings.c_oflag |= OPOST; //causes the output data to be processed in an implementation-defined manner
 
-	/* set parameters on the OS
-		fd = file descriptor for terminal
-		TCSANOW = the changes occur immediately
-		&serialportsettings = pointer towards the serial port */
-	tcsetattr(fd,TCSANOW,&serialportsettings);
-
-	/* open serial port, establish settings. 
-		O_RDWR = read/write mode. 
-		O_NOCTTY = This program should not be the controlling terminal for that port. 
-		O_NDELAY = UNIX doesn't care what state the DCD signal line is in */
+	tcsetattr(fd,TCSANOW,&serialportsettings); 		//set the above attributes
 
 
+	/* install the signal handler before making the device asynchronous
+		sa_handler = pointer to the signal-catching function
+		sa_mask = additional set of signals to be blocked during execution of signal-catching fxn
+		sa_flags = special flags to affect behavior of signal */
 
-
-    /* install the signal handler before making the device asynchronous
-
-    	sa_handler = pointer to the signal-catching function
-    	sa_mask = additional set of signals to be blocked during execution of signal-catching fxn
-    	sa_flags = special flags to affect behavior of signal */
-
-    saio.sa_handler = signal_handler_IO;
-    // saio.sa_mask = 0;		\\this kept giving me an error, so the next two lines replace this
-    sigemptyset(&saio.sa_mask);
+	saio.sa_handler = signal_handler_IO;
+	// saio.sa_mask = 0;		\\this kept giving me an error, so the next two lines replace this
+	sigemptyset(&saio.sa_mask);
 	sigaddset(&saio.sa_mask, SIGINT);
-    saio.sa_flags = 0;
-    saio.sa_restorer = NULL;
-    sigaction(SIGIO,&saio,NULL);
+	saio.sa_flags = 0;
+	saio.sa_restorer = NULL;
+	sigaction(SIGIO,&saio,NULL);
 
-    /* Make the file descriptor asynchronous (the manual page says only 
-       O_APPEND and O_NONBLOCK, will work with F_SETFL...) */
-    // fcntl(fd, F_SETFL, FASYNC);
-    fcntl(fd, F_SETFL, FNDELAY|O_ASYNC );
+	/* Make the file descriptor asynchronous (the manual page says only 
+	   O_APPEND and O_NONBLOCK, will work with F_SETFL...) */
+	// fcntl(fd, F_SETFL, FASYNC);
+	fcntl(fd, F_SETFL, FNDELAY|O_ASYNC );
 
-	/* Input Modes
-    	  IGNPAR = ignore framing errors and parity errors
-    	  ICRNL = translate carriage return to newline on input (unless IGNCR is set*/
-    // serialportsettings.c_iflag = IGNPAR | ICRNL;
-
-    /* Output Modes
-    	not sure why this is 0. 0 is set for canonical input processing */
-
-	/* Local Modes
-		ICANON = Enable canonical mode (is our board canonical?) */
-
-	// serialportsettings.c_lflag = ICANON;
-	
 	/* Special Characters
 		MIN > 0, TIME == 0 (blocking read)
-	      read(2) blocks until MIN bytes are available, and returns up
-	      to the number of bytes requested.
+		  read(2) blocks until MIN bytes are available, and returns up
+		  to the number of bytes requested.
 
 		VMIN = minimal number of characters for noncanonical read
 		VTIME = timeout in deciseconds for noncanonical read */
@@ -139,22 +106,16 @@ main()
 		&serialportsettings = pointer to serialportsettings */
 	tcsetattr(fd,TCSANOW,&serialportsettings);
 
-	// char write_buffer[] = "v";
-	// write(fd,write_buffer,sizeof(write_buffer));
-	
-	/* loop while waiting for input. normally we would do something
-	useful here */ 
+
 	while (STOP==FALSE) {
-		// printf(".\n");usleep(1000);
-		/* after receiving SIGIO, wait_flag = FALSE, input is available
-		 and can be read */
 		if (wait_flag==FALSE) { 
 			int bytes_available;
 			// ioctl(fd, FIONREAD, &bytes_available);
 			// printf("BYTES WAITING: %d", FIONREAD);
-			res = read(fd,buf,31);
-			printf("%s\n", buf);
-			// printf(":number of bytes:%d\n", res);
+			res = read(fd,&buf,33);
+			byte_parser(buf,res);
+			// printf("%s\n", buf);
+			printf(":number of bytes:%d\n", res);
 			if (res==0){
 				STOP=TRUE;		// stop loop if only a CR was input 
 				printf("STOPPED STREAM\n");
@@ -169,4 +130,18 @@ main()
 void signal_handler_IO (int status){
 	// printf("-------------------received SIGIO signal---------------------------\n");
 	wait_flag = FALSE;
+}
+
+float byte_parser (unsigned char buf[], int res){
+	for (int i=0; i<res;i++){
+		printf("BYTE %d\n",buf[i]);
+	}
+	// printf("FIRST BYTE %i\n",buf[0]);
+	// if (buf[0] == 192){
+	// 	printf("yessssss\n");
+	// 	sleep(2);
+	// }
+	// else
+	// 	printf("noooooo\n");
+	return 0.0;
 }
