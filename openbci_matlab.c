@@ -24,7 +24,7 @@ NOTES:
 volatile int STOP=FALSE; 
 
 void signal_handler_IO (int status);   /* definition of signal handler */
-float byte_parser (unsigned char buf[], int res);
+int * byte_parser (unsigned char buf[], int res);
 int wait_flag=TRUE;    
 
 main()
@@ -71,7 +71,6 @@ main()
 		sa_handler = pointer to the signal-catching function
 		sa_mask = additional set of signals to be blocked during execution of signal-catching fxn
 		sa_flags = special flags to affect behavior of signal */
-
 	saio.sa_handler = signal_handler_IO;
 	// saio.sa_mask = 0;		\\this kept giving me an error, so the next two lines replace this
 	sigemptyset(&saio.sa_mask);
@@ -89,7 +88,6 @@ main()
 		MIN > 0, TIME == 0 (blocking read)
 		  read(2) blocks until MIN bytes are available, and returns up
 		  to the number of bytes requested.
-
 		VMIN = minimal number of characters for noncanonical read
 		VTIME = timeout in deciseconds for noncanonical read */
 	serialportsettings.c_cc[VMIN]=33;
@@ -99,12 +97,6 @@ main()
 		fd = object
 		TCIOFLUSH = flush written and received data */
 	tcflush(fd, TCIOFLUSH);
-
-	/* Sets parameters associated with the board
-		fd = object
-		TCSANOW = the change occurs immediately
-		&serialportsettings = pointer to serialportsettings */
-	tcsetattr(fd,TCSANOW,&serialportsettings);
 
 
 	while (STOP==FALSE) {
@@ -132,16 +124,99 @@ void signal_handler_IO (int status){
 	wait_flag = FALSE;
 }
 
-float byte_parser (unsigned char buf[], int res){
+int * byte_parser (unsigned char buf[], int res){
+	static unsigned char framenumber = 0;
+	static int channel_number = 0;
+	static int byte_count = 0;
+	static int temp_val = 0;
+	static int output[7];
+	int parse_state = 0;
+
+	printf("--------------------------NEW SAMPLE---------------------------------------------\n");
 	for (int i=0; i<res;i++){
-		printf("BYTE %d\n",buf[i]);
+		printf("PARSE STATE %d | ", parse_state);
+		printf("BYTE %x\n",buf[i]);
+		switch (parse_state) {
+			case 0:
+			// look for header
+					if (buf[i] == 0xA0){
+						parse_state++;
+					}else{
+						// printf("ok..../n");
+						parse_state = 0;
+					}
+				break;
+			case 1: 
+			// Check the packet counter
+					if (buf[i] != framenumber){
+						printf("damn son, change sync loss val\n");
+					}
+					framenumber = buf[i]+1;
+					channel_number=0;
+					parse_state++;
+					break;
+			case 2:
+			// get ADS channel values **CHANNEL DATA**
+				temp_val |= (((unsigned int)buf[i]) << (16 - (byte_count*8))); //convert to MSB
+				byte_count++;
+				//24 bit to 32 bit conversion
+				if (byte_count==3){
+					if ((temp_val & 0x00800000) > 0) {
+						temp_val |= 0xFF000000;
+					}else{
+						temp_val &= 0x00FFFFFF;
+					}
+					output[channel_number] = temp_val;
+					printf("CHANNEL NO. %d\n", channel_number);
+					channel_number++;
+					if (channel_number = 72){
+						// printf("ALL CHANNELS WOOP WOOP\n");
+						parse_state++;
+						byte_count = 0;
+						temp_val = 0;
+					}else{
+						byte_count = 0;
+						temp_val = 0;
+					}
+				}
+				break;
+			case 3:
+			// get LIS3DH channel values 2 bytes times 3 axes **ACCELEROMETER**
+				temp_val |= (((unsigned int)buf[i]) << (8 - (byte_count*8)));
+				byte_count++;
+				if (byte_count==2) {
+					if ((temp_val & 0x00008000) > 0) {
+						temp_val |= 0xFFFF0000;
+					} else {
+						temp_val &= 0x0000FFFF;
+					}  
+					output[channel_number]=temp_val;
+					channel_number++;
+					if (channel_number==(8+3)) {  // all channels arrived !
+						parse_state++;
+						byte_count=0;
+						channel_number=0;
+						temp_val=0;
+					}
+					else { byte_count=0; temp_val=0; }
+				}
+				break;
+
+			case 4: 
+			// End byte
+				if (buf[i] == 0xC0){
+					// call message pump???
+					parse_state = 1;
+				}
+				else
+				{
+					// Insert something about synching here
+					parse_state= 0;	// resync
+				}
+				break;
+
+		default: parse_state=0;  // resync		}
+		}
 	}
-	// printf("FIRST BYTE %i\n",buf[0]);
-	// if (buf[0] == 192){
-	// 	printf("yessssss\n");
-	// 	sleep(2);
-	// }
-	// else
-	// 	printf("noooooo\n");
-	return 0.0;
+	return output;
 }
