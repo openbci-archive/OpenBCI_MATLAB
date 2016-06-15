@@ -16,7 +16,7 @@ NOTES:
 #include <sys/types.h>
 
 #define BAUDRATE B115200			// define baudrate (115200bps)
-#define PORT "/dev/ttyUSB2"			// define port
+#define PORT "/dev/ttyUSB0"			// define port
 #define _POSIX_SOURCE 1				// POSIX compliant source ((((how necessary is this...))))
 #define FALSE 0
 #define TRUE 1
@@ -56,14 +56,20 @@ main()
     tcgetattr(fd,&serialportsettings);				// Gets the parameters associated with the object (fd) and stores them
     cfsetispeed(&serialportsettings,B115200);		// set the input baud rate
 	cfsetospeed(&serialportsettings,B115200);		// set the output baud rate	
+	
+	//Hardware Information
 	serialportsettings.c_cflag &= ~PARENB;			// set the parity bit (0)
 	serialportsettings.c_cflag &= ~CSTOPB;			// stop bits = 1
 	serialportsettings.c_cflag &= ~CSIZE;			// clears the mask
 	serialportsettings.c_cflag |= CS8;				// set the data bits = 8
 	serialportsettings.c_cflag &= ~CRTSCTS;			// turn off hardware based flow control (RTS/CTS)
-	serialportsettings.c_cflag |= CREAD | CLOCAL;	// turn on the receiver of the serial por (CREAD)
+	serialportsettings.c_cflag |= CREAD | CLOCAL;	// turn on the receiver of the serial port (CREAD)
+	
+	//Input data flags
 	serialportsettings.c_iflag &= ~(IXON | IXOFF | IXANY);
-	serialportsettings.c_iflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+	//Echoing and character processing flags
+	serialportsettings.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+	//Output data flags
 	serialportsettings.c_oflag |= OPOST;
 
 	/* set parameters on the OS
@@ -98,16 +104,6 @@ main()
        O_APPEND and O_NONBLOCK, will work with F_SETFL...) */
     // fcntl(fd, F_SETFL, FASYNC);
     fcntl(fd, F_SETFL, FNDELAY|O_ASYNC );
-
-
-    /* Control Modes
-    	  BAUDRATE: Set bps rate. You could also use cfsetispeed and cfsetospeed.
-          CRTSCTS : output hardware flow control (only used if the cable has
-                    all necessary lines. See sect. 7 of Serial-HOWTO)
-          CS8     : 8n1 (8bit,no parity,1 stopbit)
-          CLOCAL  : local connection, no modem contol
-          CREAD   : enable receiving characters*/
-    // serialportsettings.c_cflag = BAUDRATE | CRTSCTS | CS8 | CLOCAL | CREAD;
 
 	/* Input Modes
     	  IGNPAR = ignore framing errors and parity errors
@@ -158,7 +154,7 @@ main()
 			// printf("BYTES WAITING: %d", FIONREAD);
 			res = read(fd,buf,31);
 			printf("%s\n", buf);
-			printf(":number of bytes:%d\n", res);
+			// printf(":number of bytes:%d\n", res);
 			if (res==0){
 				STOP=TRUE;		// stop loop if only a CR was input 
 				printf("STOPPED STREAM\n");
