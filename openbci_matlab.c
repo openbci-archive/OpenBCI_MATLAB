@@ -32,7 +32,7 @@ main()
 	int fd;								// File descriptor for the port
 	int c;
 	int res;
-	unsigned char buf[1024];
+	unsigned char buf[16];
 	struct termios serialportsettings;  // Declare the serial port struct
 	struct sigaction saio;				// Declare signals
 	fd = open(PORT, O_RDWR | O_NOCTTY); // declare serial port file descriptor
@@ -52,17 +52,23 @@ main()
 
 	//Hardware Information
 	serialportsettings.c_cflag &= ~PARENB;			// set the parity bit (0)
-	serialportsettings.c_cflag &= ~CSTOPB;			// stop bits = 1
-	serialportsettings.c_cflag &= ~CSIZE;			// clears the mask
+	serialportsettings.c_cflag &= ~CSTOPB;			// stop bits = 1 (2 is default)
+	serialportsettings.c_cflag &= ~CSIZE;			// clears the mask ()
 	serialportsettings.c_cflag |= CS8;				// set the data bits = 8
-	serialportsettings.c_cflag &= ~CRTSCTS;			// turn off hardware based flow control (RTS/CTS)
-	serialportsettings.c_cflag |= CREAD | CLOCAL;	// turn on the receiver of the serial port (CREAD)
+	serialportsettings.c_cflag &= ~CRTSCTS;			// no hardware based flow control (RTS/CTS)
+	serialportsettings.c_cflag |= CREAD;	// turn on the receiver of the serial port (CREAD)
+	serialportsettings.c_cflag |= CLOCAL;			//no modem
 	//Input data flags (not needed?)
-	// serialportsettings.c_iflag &= ~(IXON | IXOFF | IXANY);
+	// serialportsettings.c_iflag |= IXOFF | IGNBRK;
+	// serialportsettings.c_iflag &= ~(BRKINT | IGNPAR | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+
 	//Echoing and character processing flags
 	serialportsettings.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); //no echoing, input proc, signals, or background proc halting
 	//Output data flags ("for ")
 	// serialportsettings.c_oflag |= OPOST; //causes the output data to be processed in an implementation-defined manner
+
+	serialportsettings.c_cc[VMIN]=33;
+	serialportsettings.c_cc[VTIME]=0;
 
 	tcsetattr(fd,TCSANOW,&serialportsettings); 		//set the above attributes
 
@@ -90,14 +96,13 @@ main()
 		  to the number of bytes requested.
 		VMIN = minimal number of characters for noncanonical read
 		VTIME = timeout in deciseconds for noncanonical read */
-	serialportsettings.c_cc[VMIN]=33;
-	serialportsettings.c_cc[VTIME]=0;
+
+
 
 	/* Flush
 		fd = object
 		TCIOFLUSH = flush written and received data */
 	tcflush(fd, TCIOFLUSH);
-
 
 	while (STOP==FALSE) {
 		if (wait_flag==FALSE) { 
@@ -106,8 +111,7 @@ main()
 			// printf("BYTES WAITING: %d", FIONREAD);
 			res = read(fd,&buf,33);
 			byte_parser(buf,res);
-			// printf("%s\n", buf);
-			printf(":number of bytes:%d\n", res);
+			printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$number of bytes:%d\n", res);
 			if (res==0){
 				STOP=TRUE;		// stop loop if only a CR was input 
 				printf("STOPPED STREAM\n");
@@ -130,14 +134,18 @@ int * byte_parser (unsigned char buf[], int res){
 	static int byte_count = 0;
 	static int temp_val = 0;
 	static int output[7];
-	int parse_state = 0;
-
-	printf("--------------------------NEW SAMPLE---------------------------------------------\n");
+	int parse_state = 1;
 	for (int i=0; i<res;i++){
 		printf("PARSE STATE %d | ", parse_state);
 		printf("BYTE %x\n",buf[i]);
 		switch (parse_state) {
 			case 0:
+			// if parses loses its place, find the end to restart
+				if (buf[i] == 0xC0){
+					parse_state++;
+				}
+				break;
+			case 1:
 			// look for header
 					if (buf[i] == 0xA0){
 						parse_state++;
@@ -146,7 +154,7 @@ int * byte_parser (unsigned char buf[], int res){
 						parse_state = 0;
 					}
 				break;
-			case 1: 
+			case 2: 
 			// Check the packet counter
 					if (buf[i] != framenumber){
 						printf("damn son, change sync loss val\n");
@@ -155,10 +163,11 @@ int * byte_parser (unsigned char buf[], int res){
 					channel_number=0;
 					parse_state++;
 					break;
-			case 2:
+			case 3:
 			// get ADS channel values **CHANNEL DATA**
 				temp_val |= (((unsigned int)buf[i]) << (16 - (byte_count*8))); //convert to MSB
 				byte_count++;
+				// printf("BYTE COUNT = %d\n", byte_count);
 				//24 bit to 32 bit conversion
 				if (byte_count==3){
 					if ((temp_val & 0x00800000) > 0) {
@@ -167,9 +176,9 @@ int * byte_parser (unsigned char buf[], int res){
 						temp_val &= 0x00FFFFFF;
 					}
 					output[channel_number] = temp_val;
-					printf("CHANNEL NO. %d\n", channel_number);
+					// printf("CHANNEL NO. %d\n", channel_number);
 					channel_number++;
-					if (channel_number = 72){
+					if (channel_number==8){
 						// printf("ALL CHANNELS WOOP WOOP\n");
 						parse_state++;
 						byte_count = 0;
@@ -180,7 +189,7 @@ int * byte_parser (unsigned char buf[], int res){
 					}
 				}
 				break;
-			case 3:
+			case 4:
 			// get LIS3DH channel values 2 bytes times 3 axes **ACCELEROMETER**
 				temp_val |= (((unsigned int)buf[i]) << (8 - (byte_count*8)));
 				byte_count++;
@@ -202,15 +211,15 @@ int * byte_parser (unsigned char buf[], int res){
 				}
 				break;
 
-			case 4: 
+			case 5: 
 			// End byte
 				if (buf[i] == 0xC0){
 					// call message pump???
 					parse_state = 1;
 				}
-				else
-				{
+				else{
 					// Insert something about synching here
+					printf("CATCH UP!\n");
 					parse_state= 0;	// resync
 				}
 				break;
