@@ -2,8 +2,8 @@
 
 This program provides serial port communication with the OpenBCI Board.
 
-NOTES:
--OpenBCI board uses asynchronous, 
+Written by Gabriel Ibagon at OpenBCI, June 2016
+gabriel.ibagon@gmail.com
 
 */
 
@@ -70,6 +70,13 @@ main()
 	serialportsettings.c_cc[VMIN]=33;
 	serialportsettings.c_cc[VTIME]=0;
 
+
+	/* Make the file descriptor asynchronous (the manual page says only 
+	   O_APPEND and O_NONBLOCK, will work with F_SETFL...) */
+	// fcntl(fd, F_SETFL, FASYNC);
+	fcntl(fd, F_SETFL, O_NDELAY|O_ASYNC );
+
+
 	tcsetattr(fd,TCSANOW,&serialportsettings); 		//set the above attributes
 
 
@@ -79,16 +86,11 @@ main()
 		sa_flags = special flags to affect behavior of signal */
 	saio.sa_handler = signal_handler_IO;
 	// saio.sa_mask = 0;		\\this kept giving me an error, so the next two lines replace this
-	sigemptyset(&saio.sa_mask);
-	sigaddset(&saio.sa_mask, SIGINT);
+	// sigemptyset(&saio.sa_mask);
+	// sigaddset(&saio.sa_mask, SIGINT);
 	saio.sa_flags = 0;
 	saio.sa_restorer = NULL;
 	sigaction(SIGIO,&saio,NULL);
-
-	/* Make the file descriptor asynchronous (the manual page says only 
-	   O_APPEND and O_NONBLOCK, will work with F_SETFL...) */
-	// fcntl(fd, F_SETFL, FASYNC);
-	fcntl(fd, F_SETFL, FNDELAY|O_ASYNC );
 
 	/* Special Characters
 		MIN > 0, TIME == 0 (blocking read)
@@ -97,12 +99,11 @@ main()
 		VMIN = minimal number of characters for noncanonical read
 		VTIME = timeout in deciseconds for noncanonical read */
 
-
-
 	/* Flush
 		fd = object
 		TCIOFLUSH = flush written and received data */
 	tcflush(fd, TCIOFLUSH);
+	write(fd,"v",1);
 
 	while (STOP==FALSE) {
 		if (wait_flag==FALSE) { 
@@ -110,8 +111,8 @@ main()
 			// ioctl(fd, FIONREAD, &bytes_available);
 			// printf("BYTES WAITING: %d", FIONREAD);
 			res = read(fd,&buf,33);
-			byte_parser(buf,res);
 			printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$number of bytes:%d\n", res);
+			byte_parser(buf,res);
 			if (res==0){
 				STOP=TRUE;		// stop loop if only a CR was input 
 				printf("STOPPED STREAM\n");
@@ -128,14 +129,19 @@ void signal_handler_IO (int status){
 	wait_flag = FALSE;
 }
 
+int packetslost;
+packetslost = 0;
+int samplecounter;
+
 int * byte_parser (unsigned char buf[], int res){
 	static unsigned char framenumber = 0;
 	static int channel_number = 0;
 	static int byte_count = 0;
 	static int temp_val = 0;
 	static int output[7];
-	int parse_state = 1;
+	int parse_state = 0;
 	for (int i=0; i<res;i++){
+		printf("%d |", i);
 		printf("PARSE STATE %d | ", parse_state);
 		printf("BYTE %x\n",buf[i]);
 		switch (parse_state) {
@@ -143,6 +149,9 @@ int * byte_parser (unsigned char buf[], int res){
 			// if parses loses its place, find the end to restart
 				if (buf[i] == 0xC0){
 					parse_state++;
+				}
+				else if (buf[i] == 0xA0){
+					parse_state = 2;
 				}
 				break;
 			case 1:
@@ -156,10 +165,15 @@ int * byte_parser (unsigned char buf[], int res){
 				break;
 			case 2: 
 			// Check the packet counter
-					if (buf[i] != framenumber){
+					if ((buf[i]-framenumber!= 1) && (buf[i]!=0)){
+						printf("%d",(buf[i]-framenumber!= 1));
+						printf("%d",(buf[i]!=0));
 						printf("damn son, change sync loss val\n");
+						packetslost++;
+						printf("PACKETS LOST: %d", packetslost);
 					}
-					framenumber = buf[i]+1;
+					printf("%d\n", framenumber);
+					framenumber++;
 					channel_number=0;
 					parse_state++;
 					break;

@@ -5,8 +5,11 @@ void parse_byte_OPENBCI(unsigned char actbyte, int channelsInPacket)
 	static int tempval=0;
 	static unsigned char framenumber=0;
 	static int output[7];
+	int counter=0;
 
 	switch (PACKET.readstate) {
+		counter++;
+		printf("%d\n" counter);
 
 		// To better sync up when lost, look for two byte sequence.  It has happened
 		// previously, that when data contains lots of A0's, sync could not reestablish.
@@ -25,7 +28,7 @@ void parse_byte_OPENBCI(unsigned char actbyte, int channelsInPacket)
 					GLOBAL.syncloss++;
 					// but go ahead and parse it anyway, 
 				}
-				framenumber = actbyte + 1;		// next expected frame number
+				framenumber++;		// next expected frame number
 				bytecounter=0;
 				channelcounter=0;
 				tempval=0;
