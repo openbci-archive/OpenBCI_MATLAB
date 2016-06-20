@@ -6,7 +6,6 @@ Written by Gabriel Ibagon at OpenBCI, June 2016
 gabriel.ibagon@gmail.com
 
 */
-
 #include <stdio.h>			 		// standard input/output definitions
 #include <termios.h>				// POSIX terminal control definitions
 #include <fcntl.h>					// File Control definitions
@@ -59,7 +58,8 @@ main()
 	serialportsettings.c_cflag |= CREAD;	// turn on the receiver of the serial port (CREAD)
 	serialportsettings.c_cflag |= CLOCAL;			//no modem
 	//Input data flags (not needed?)
-	// serialportsettings.c_iflag |= IXOFF | IGNBRK;
+	serialportsettings.c_iflag &= ~(IXOFF | IXON);
+	// serialportsettings.c_iflag |= IGNBRK;
 	// serialportsettings.c_iflag &= ~(BRKINT | IGNPAR | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
 
 	//Echoing and character processing flags
@@ -156,6 +156,8 @@ int * byte_parser (unsigned char buf[], int res){
 				break;
 			case 1:
 			// look for header
+					// printf("START BYTE %x\n",buf[i]);
+
 					if (buf[i] == 0xA0){
 						parse_state++;
 					}else{
@@ -165,12 +167,10 @@ int * byte_parser (unsigned char buf[], int res){
 				break;
 			case 2: 
 			// Check the packet counter
+					// printf("COUNT BYTE %x\n",buf[i]);
 					if ((buf[i]-framenumber!= 1) && (buf[i]!=0)){
-						printf("%d",(buf[i]-framenumber!= 1));
-						printf("%d",(buf[i]!=0));
-						printf("damn son, change sync loss val\n");
+						// printf("%d",(buf[i]-framenumber!= 1));
 						packetslost++;
-						printf("PACKETS LOST: %d", packetslost);
 					}
 					printf("%d\n", framenumber);
 					framenumber++;
