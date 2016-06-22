@@ -12,6 +12,7 @@ This program provides serial port communication with the OpenBCI Board.
 #include <errno.h>					//
 #include <sys/signal.h>
 #include <sys/types.h>
+#include <math.h>
 
 #define BAUDRATE B115200			// define baudrate (115200bps)
 #define PORT "/dev/ttyUSB0"			// define port
@@ -25,15 +26,17 @@ volatile int STOP=FALSE;
 void signal_handler_IO (int status);  							 // definition of signal handler */
 void init_byte_parser(unsigned char buf[], int res); //method to parse the bytes during initialization
 float * byte_parser (unsigned char buf[], int res); // methoD to parse the bytes while streaming
+void initialize_port(char port);
 int wait_flag=FALSE;    														// signalling
-int streaming = 1;																	// used to switch parsing between initialization mode and streaming mode
+int streaming = 1;
+int fd;															// the file descriptor for the serial port
+																	// used to switch parsing between initialization mode and streaming mode
 
-main()
-{
+
+void initialize_port(char* port){
 	int c;								
 	int res;														// return of function read(): number of bytes read
 	unsigned char buf[33];							// byte buffer
-	int fd;															// the file descriptor for the serial port
 	struct termios serialportsettings;	// the serial port struct						
 	struct sigaction saio;							// Declare signals
 	fd = open(PORT, O_RDWR | O_NOCTTY); // declare serial port file descriptor
@@ -50,13 +53,8 @@ main()
 	else
 		printf("\n ttyUSB0 Opened Successfully\n");
 
-	/* Baud Rate Information (Baud=115200) */
 	cfsetispeed(&serialportsettings,B115200);		// set the input baud rate
 	cfsetospeed(&serialportsettings,B115200);		// set the output baud rate	
-
-
-	/* Flags */
-	//Hardware Information Flags
 	serialportsettings.c_cflag &= ~PARENB;				// set the parity bit (none)
 	serialportsettings.c_cflag &= ~CSTOPB;				// # of stop bits = 1 (2 is default)
 	serialportsettings.c_cflag &= ~CSIZE;					// clears the mask
@@ -64,18 +62,9 @@ main()
 	serialportsettings.c_cflag &= ~CRTSCTS;				// no hardware based flow control (RTS/CTS)
 	serialportsettings.c_cflag |= CREAD;					// turn on the receiver of the serial port (CREAD)
 	serialportsettings.c_cflag |= CLOCAL;					// no modem
-	//Input Data Flags
 	serialportsettings.c_iflag &= ~(IXOFF | IXON);	//ignore 'XOFF' and 'XON' command bits (fixes a bug where the parser skips '0x11' and '0x13')
-	// serialportsettings.c_iflag |= IGNBRK;
-	// serialportsettings.c_iflag &= ~(BRKINT | IGNPAR | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
-	//Echoing and character processing flags
-	// serialportsettings.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); //no echoing, input proc, signals, or background proc halting
-	//Output data flags ("for ")
-	// serialportsettings.c_oflag |= OPOST; //causes the output data to be processed in an implementation-defined manner
 
-
-	// Set the minimum size of packet for read (33 bytes, 0 seconds)
-	serialportsettings.c_cc[VMIN]=33; 						// should initially 1 (during board initialization) but changed to 33 once entering streaming mode
+	serialportsettings.c_cc[VMIN]=1; 						// should initially 1 (during board initialization) but changed to 33 once entering streaming mode
 	serialportsettings.c_cc[VTIME]=0;							// 0 seconds
 	
 
@@ -85,44 +74,22 @@ main()
 	saio.sa_flags = 0;														// signal handling
 	saio.sa_restorer = NULL;											// signal handling
 	sigaction(SIGIO,&saio,NULL);									// signal handling
-	tcflush(fd, TCIOFLUSH);												// flush the serail port
-	write(fd,"v",1); 															//reset the board and receive+print board information 
-
-
-	//*******************************************************************************************
-	// STREAMING LOOP
-	//
-
-	while (STOP==FALSE) {
-
-		// signal
-		if (wait_flag==FALSE) { 
-			int bytes_available;
-			res = read(fd,&buf,33);										// read 33 bytes from serial and place at buf
-			// printf("AMT %d",res);
-			// if (!streaming){
-			// 	printf("entering...");
-			// 	init_byte_parser(buf,res);
-			// }else{
-			// 	// printf("STREAMING");
-			// 	byte_parser(buf,res);
-			// 	printf("sup dog");
-			// }
-
-			byte_parser(buf,res);										// send the read to byte_parser()
-			wait_flag = TRUE;												/* wait for new input */
-		}
-	}
-
-
-	/* CLOSE SERIAL PORT */
+	tcflush(fd, TCIOFLUSH);												// flush the serail port	return 1;
+	write(fd,"v",1); 
+	// res = read(fd,&buf,10000);
+	// printf("RES %d",res);
+	// close(fd);							// read 33 bytes from serial and place at buf															//reset the board and receive+print board information 
+}
+void close_port(){
 	close(fd);
 }
 
-/*************************************************************************************
-//	SIGNAL HANDLER
-//
-*/
+void send_to_board(char* message){
+	write(fd,message,1);
+	// printf("%c sent!\n\n", message);
+}
+	
+
 void signal_handler_IO (int status){
 	wait_flag = FALSE;
 }
@@ -133,35 +100,6 @@ void signal_handler_IO (int status){
 //	PARSER
 //
 */
-
-
-//INITIALIZATION BYTE PARSER
-int samplecounter;
-int EOT = 0;
-void init_byte_parser(unsigned char buf[], int res){
-	for (int i=0;i<res;i++){
-
-		// printf("TRUE??? %d\n",(buf[i] == 36));
-		if (buf[i] == 36){
-			EOT++;
-			if ((1==1)){
-				printf("ok");
-				// set_stream_mode();
-			}
-		}
-	}
-}
-
-// After initialization is finished, change the parse mode to stream mode
-// This mostly means that c_cc[VMIN] must be set to 33 bytes, rather than 1
-/*
-void set_stream_mode(){
- 	printf("slksksksksskks");
- 	serialportsettings.c_cc[VMIN]=1; //initially 1, but changed to 33 once entering streaming mode
- 	tcsetattr(fd,TCSANOW,&serialportsettings);
- }
-*/
-
 
 // STREAMING BYTE PARSER
 float * byte_parser (unsigned char buf[], int res){
@@ -219,8 +157,7 @@ float * byte_parser (unsigned char buf[], int res){
 					}else{
 						temp_val &= 0x00FFFFFF;
 					}
-					/* simple count to uV conversion needed here! 
-					Check docs.openbci.com */
+					// temp_val = (4.5 / 24 / float((pow(2, 23) - 1)) * 1000000.f) * temp_val; // convert from count to bytes
 					output[channel_number] = temp_val;					// place value into data output buffer
 					printf("CHANNEL NO. %d\n", channel_number);
 					channel_number++;
