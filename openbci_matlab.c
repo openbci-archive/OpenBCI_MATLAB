@@ -15,7 +15,6 @@ This program provides serial port communication with the OpenBCI Board.
 #include <math.h>
 
 #define BAUDRATE B115200			// define baudrate (115200bps)
-#define PORT "/dev/ttyUSB0"			// define port
 #define _POSIX_SOURCE 1				// POSIX compliant source
 #define FALSE 0
 #define TRUE 1
@@ -27,6 +26,7 @@ void signal_handler_IO (int status);  							 // definition of signal handler */
 void init_byte_parser(unsigned char buf[], int res); //method to parse the bytes during initialization
 float * byte_parser (unsigned char buf[], int res); // methoD to parse the bytes while streaming
 void initialize_port(char port);
+void send_to_board(char* message);
 int wait_flag=FALSE;    														// signalling
 int streaming = 1;
 int fd;															// the file descriptor for the serial port
@@ -39,7 +39,7 @@ void initialize_port(char* port){
 	unsigned char buf[33];							// byte buffer
 	struct termios serialportsettings;	// the serial port struct						
 	struct sigaction saio;							// Declare signals
-	fd = open(PORT, O_RDWR | O_NOCTTY); // declare serial port file descriptor
+	fd = open(port, O_RDWR | O_NOCTTY); // declare serial port file descriptor
 
 	/******************************************************************************************
 	//	SERIAL PORT SETUP 
@@ -75,7 +75,7 @@ void initialize_port(char* port){
 	saio.sa_restorer = NULL;											// signal handling
 	sigaction(SIGIO,&saio,NULL);									// signal handling
 	tcflush(fd, TCIOFLUSH);												// flush the serail port	return 1;
-	write(fd,"v",1); 
+	int i =write(fd,"v",1); 
 	// res = read(fd,&buf,10000);
 	// printf("RES %d",res);
 	// close(fd);							// read 33 bytes from serial and place at buf															//reset the board and receive+print board information 
@@ -85,7 +85,7 @@ void close_port(){
 }
 
 void send_to_board(char* message){
-	write(fd,message,1);
+	int i = write(fd,message,1);
 	// printf("%c sent!\n\n", message);
 }
 	
