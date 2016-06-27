@@ -36,7 +36,9 @@ void sd_record(char* arg);
 void sd_save();
 void register_settings();
 void board_information();
+void mxShowCriticalErrorMessage(const char *msg);
 
+/* Constants */
 int channel_number = 16;
 
 /* The gateway function*/
@@ -46,23 +48,25 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]){
 	size_t buflen;
   char output_buf[3];
   char c;
-  buflen = (mxGetM(prhs[0]) * mxGetN(prhs[0])) + 1;     //length of input string
-  command = mxArrayToString(prhs[0]);           //holds the port string   
 
 	/* ARGUMENT CHECK */
 	if (nrhs<1)
-		mexErrMsgIdAndTxt("MATLAB:openbci_matlab:invalidNumInputs",
-			"Enter correct inputs: openbci_matlab(command,arg)");
-	else if (nrhs==1)
-		command = mxArrayToString(prhs[0]);						//holds the port string						
-	else if (nrhs>1){
+		mxShowCriticalErrorMessage("Enter correct number of inputs: openbci(command, arg)");
+	else if (nrhs==1){
+		command = mxArrayToString(prhs[0]);						//holds the port string		
+    arg = NULL;	
+  }			
+	else if (nrhs==2){
 		arg = mxArrayToString(prhs[1]);
 	}
+  else if (nrhs>2)
+    mexErrMsgIdAndTxt("openbci:InputNumError","Too many inputs. Use openbci(command, arg)");
 	else if(nlhs > 2) 
-	  mexErrMsgIdAndTxt( "MATLAB:revord:maxlhs",
+	  mexErrMsgIdAndTxt( "OPENBCI:revord:maxlhs",
 			  "Too many output arguments.");
 
-				
+  command = mxArrayToString(prhs[0]);           //holds the port string   
+
 	/* Evaluate Coammnds */
 	if (strcmp(command,"open")==0)
 		open_helper(arg); //in openbci_matlab.c
@@ -70,12 +74,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]){
 		close_helper(); //in openbci_matlab.c
 	else if (strcmp(command,"reset")==0)
     reset();
-  else if (strcmp(command,"stream")==0)
+  else if (strcmp(command,"stream")==0){
+    /*possibly check if already streaming, then display warning*/
     stream();
-  else if (strcmp(command,"stop")==0)
+  }
+  else if (strcmp(command,"stop")==0){
+    /*possibly check if not streaming, then display warning*/
     stop();
-  else if (strcmp(command,"channel off")==0)
-    channel_off(arg);
+  }
+  else if (strcmp(command,"channel off")==0){
+    if (arg == NULL)
+      mxShowCriticalErrorMessage("ERROR! Missing arguments: openbci(command,arg)");
+    else
+      channel_off(arg);
+  }
   else if (strcmp(command,"channel on")==0)
     channel_on(arg);
   else if (strcmp(command, "channel settings")==0)
@@ -88,9 +100,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]){
     sd_save();
   else if (strcmp(command, "register settings")==0)
     register_settings();
+  else{
+    // const char *msg = "ERROR! Command %s not found";
+    char msg[64];
+    snprintf(msg,sizeof(msg), "ERROR! Command \'%s\' not found", command);
+    mxShowCriticalErrorMessage(msg);
+  }
 }
+
+/*Board Commands*/
 void open_helper(char* arg){
-  initialize_port(arg);
+  /*insert error message here, depending on the structure of the serial driver*/
+  if (initialize_port(arg) < 0){
+    char msg[64];
+    snprintf(msg,sizeof(msg), "ERROR! Serial port \'%s\' not found.", arg);
+    mxShowCriticalErrorMessage(msg);
+  }else{
+    printf("Serial port %s opened successfully", arg);
+  }
 }
 void close_helper(){
   close_port();
@@ -157,7 +184,10 @@ void channel_off(char* arg){
           else if (strcmp(output_buf, "16")==0)
               c = 'i';
           else {
-            printf("Please enter valid channel values (1-16)");
+            if (channel_number == 8)
+              mxShowCriticalErrorMessage("Enter valid channel values (1-8)");
+            else
+              mxShowCriticalErrorMessage("Enter valid channel values (1-16)");
           }
         }
         send_to_board(&c);
@@ -555,4 +585,11 @@ void sd_save(){
 void register_settings(){
   char c = '?';
   send_to_board(&c);
+}
+
+
+void mxShowCriticalErrorMessage(const char *msg){
+  mxArray *arg;
+  arg = mxCreateString(msg);
+  mexCallMATLAB(0,0,1,&arg,"error");
 }

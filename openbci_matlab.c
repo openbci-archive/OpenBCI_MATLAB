@@ -25,7 +25,7 @@ volatile int STOP=FALSE;
 void signal_handler_IO (int status);  							 // definition of signal handler */
 void init_byte_parser(unsigned char buf[], int res); //method to parse the bytes during initialization
 float * byte_parser (unsigned char buf[], int res); // methoD to parse the bytes while streaming
-void initialize_port(char port);
+int initialize_port(char port);
 void send_to_board(char* message);
 int wait_flag=FALSE;    														// signalling
 int streaming = 1;
@@ -33,7 +33,7 @@ int fd;															// the file descriptor for the serial port
 																	// used to switch parsing between initialization mode and streaming mode
 
 
-void initialize_port(char* port){
+int initialize_port(char* port){
 	int c;								
 	int res;														// return of function read(): number of bytes read
 	unsigned char buf[33];							// byte buffer
@@ -48,10 +48,10 @@ void initialize_port(char* port){
 
 	// Attempt to read attributes of serial port 
 	if(tcgetattr(fd,&serialportsettings) != 0)
-		printf("\n ERROR! In opening ttyUSB0\n");
+		return -1;
 
 	else
-		printf("\n ttyUSB0 Opened Successfully\n");
+		return 0;
 
 	cfsetispeed(&serialportsettings,B115200);		// set the input baud rate
 	cfsetospeed(&serialportsettings,B115200);		// set the output baud rate	
