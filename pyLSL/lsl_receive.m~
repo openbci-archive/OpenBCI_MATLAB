@@ -25,5 +25,5 @@ end
 x = linspace(0,length(filtered(1:end,:)),length(filtered(1:end,:)));
 filtered = eeg_filter(eeg_record,1,50);
 plot(x,filtered)
-spectrogram(filtered(1:end,1),10,1,125,250)
+spectrogram(filtered(1:end,1),20,1,125,250))
 disp('done for now')

@@ -94,7 +94,6 @@ class OpenBCIBoard(object):
     self.read_state = 0
     self.daisy = daisy
     self.last_odd_sample = OpenBCISample(-1, [], []) # used for daisy
-    print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
     self.log_packet_count = 0
     self.attempt_reconnect = False
     self.last_reconnect = 0
