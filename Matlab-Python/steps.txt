@@ -1,0 +1,26 @@
+Setting up labstreaminglayer for Matlab:
+
+1. download the code from source (https://code.google.com/archive/p/labstreaminglayer/source/default/source) and place this directory somewhere you can find it
+2. go to matlab, and recursively add the "liblsl-Matlab" folder to the path
+	a. you can do this by clicking "Set Path" in "Environment", and then clicking "Add with Subfolders"
+ALTERNATIVE: addpath(genpath("/path/to/liblsl-Matlab")
+	b. save your path
+
+
+3. If you get an error after running lsl, something like ">     supergui error: argument 'fig' must be numeric", go to supergui, line 122 (or something) and change from > 'fig' 'real' [] 0;' to  fig'       ''   []      0;'
+
+
+
+
+1. sudo pip install pylsl
+
+
+Setting up OpenBCI-Python
+1. Make sure you have both python and pip installed on your system
+2. On your command line, run "pip install -r requirements.txt"
+3. Start the streamer by typing 
+
+>>python lsl_streamer.py -p "PORT_NAME"
+(replace PORT NAME with your OpenBCI port. On Windows, it should be something like "COM1", or on mac and linux, it should be something like "/dev/ttyUSB0"
+
+The python script should set up the OpenBCI connection. Press "/start" to begin streaming
