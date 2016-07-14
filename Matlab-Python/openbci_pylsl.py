@@ -29,11 +29,10 @@ class StreamerLSL():
         print('{} EEG channels and {} AUX channels at {} Hz'.format(self.eeg_channels, self.aux_channels,self.sample_rate))
 
     def send(self,sample):
-        print(sample.channel_data)
         self.outlet_eeg.push_sample(sample.channel_data)
         pass
     def create_lsl(self):
-        info_eeg = StreamInfo("OpenBCI_EEG", 'EEG', 8, 250,'float32',"openbci_eeg_id1");
+        info_eeg = StreamInfo("OpenBCI_EEG", 'EEG', self.eeg_channels, 250,'float32',"openbci_eeg_id1");
         # info_aux = StreamInfo(aux_stream, 'AUX', self.aux_channels,self.sample_rate,'float32',aux_id)
         self.outlet_eeg = StreamOutlet(info_eeg)
         # self.outlet_aux = StreamOutlet(info_aux)
@@ -101,6 +100,7 @@ class StreamerLSL():
                         boardThread.daemon = True # will stop on exit
                         try:
                             boardThread.start()
+                            print("Streaming data...")
                         except:
                                 raise
                         rec = True
