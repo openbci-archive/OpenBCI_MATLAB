@@ -1,7 +1,17 @@
-#!/usr/bin/env python2.7
-import sys; sys.path.append('lib') # help python find pylsl relative to this example program
+#######################################################
+# openbci_matlab.py
+# 
+# An interface to allow live streaming from the OpenBCI board
+# into Matlab using Python. Python establishes an instance of 
+# lab streaming layer, which is then received by a Matlab script.
+# 
+# For more information or troubleshooting, see README.md or 
+# https://github.com/OpenBCI/OpenBCI_MATLAB
+# 
+
+import sys; sys.path.append('lib')
 from pylsl import StreamInfo, StreamOutlet
-import argparse  # new in Python2.7
+import argparse
 import os
 import time
 import string
@@ -18,10 +28,13 @@ class StreamerLSL():
         parser.add_argument('-p', '--port',
                         help="Port to connect to OpenBCI Dongle " +
                         "( ex /dev/ttyUSB0 or /dev/tty.usbserial-* )")
+        parser.add_argument('-d', action="store_true",
+                        help="Enable Daisy Module " +
+                        "-d")
         args = parser.parse_args()
         port = args.port
         print ("\n-------INSTANTIATING BOARD-------")
-        self.board = bci.OpenBCIBoard(port)
+        self.board = bci.OpenBCIBoard(port, daisy=args.d)
         self.eeg_channels = self.board.getNbEEGChannels()
         self.aux_channels = self.board.getNbAUXChannels()
         self.sample_rate = self.board.getSampleRate()
@@ -29,13 +42,15 @@ class StreamerLSL():
         print('{} EEG channels and {} AUX channels at {} Hz'.format(self.eeg_channels, self.aux_channels,self.sample_rate))
 
     def send(self,sample):
+        print(sample.channel_data)
         self.outlet_eeg.push_sample(sample.channel_data)
-        pass
+        self.outlet_aux.push_sample(sample.aux_data)
+
     def create_lsl(self):
-        info_eeg = StreamInfo("OpenBCI_EEG", 'EEG', self.eeg_channels, 250,'float32',"openbci_eeg_id1");
-        # info_aux = StreamInfo(aux_stream, 'AUX', self.aux_channels,self.sample_rate,'float32',aux_id)
+        info_eeg = StreamInfo("OpenBCI_EEG", 'EEG', self.eeg_channels, self.sample_rate,'float32',"openbci_eeg_id1");
+        info_aux = StreamInfo("OpenBCI_AUX", 'AUX', self.aux_channels,self.sample_rate,'float32',"openbci_aux_id1")
         self.outlet_eeg = StreamOutlet(info_eeg)
-        # self.outlet_aux = StreamOutlet(info_aux)
+        self.outlet_aux = StreamOutlet(info_aux)
 
     def cleanUp():
         board.disconnect()
@@ -58,6 +73,7 @@ class StreamerLSL():
         # s: stop board streaming; v: soft reset of the 32-bit board (no effect with 8bit board)
         s = 'sv'
         # Tell the board to enable or not daisy module
+        print(self.board.daisy)
         if self.board.daisy:
             s = s + 'C'
         else:
@@ -146,11 +162,7 @@ class StreamerLSL():
 def main():
     lsl = StreamerLSL()
     lsl.create_lsl()
-    # # board.ser.write('v')
-    # # time.sleep(2)
     lsl.begin()
-    # board.start_streaming(lsl.send)
-
 
 if __name__ == '__main__':
     main()

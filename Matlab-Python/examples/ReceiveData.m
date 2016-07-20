@@ -1,3 +1,4 @@
+addpath(genpath('/home/ibagon/OpenBCI/OpenBCI_MATLAB/Matlab-Python/labstreaminglayer'))
 %% instantiate the library
 disp('Loading the library...');
 lib = lsl_loadlib();
@@ -11,12 +12,12 @@ while isempty(result)
 % create a new inlet
 disp('Opening an inlet...');
 inlet = lsl_inlet(result{1});
-
-disp('Now receiving data...');
-while true
-    % get data from the inlet
+[vec,ts] = inlet.pull_sample();
+start = ts;
+eeg_record = [];
+while ts - start < 5
     [vec,ts] = inlet.pull_sample();
-    % and display it
+    eeg_record = [eeg_record;vec];
     fprintf('%.2f\t',vec);
     fprintf('%.5f\n',ts);
 end
