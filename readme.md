@@ -46,8 +46,10 @@ More methods currently under development!
         > Note: If you are having trouble installing pip, you can skip this step - just make sure to download the Python libraries manually in the next step.
 
 **Install libraries**
-  1. If you have pip installed, navigate to the "Matlab-Python" directory and enter on your command line:
+  1. If you have pip installed, navigate to the "Matlab-Python" directory on your terminal/command line and type:
     `pip install -r requirements.txt`
+
+	> If you don't know how to navigate in your command line, read this (especially the section about "cd"): [Learning > the Shell](http://linuxcommand.org/lts0020.php)
 
   2. If you do not have pip installed, manually install the two libraries:
     1. [pyserial](https://pypi.python.org/pypi/pyserial)
