@@ -1,4 +1,4 @@
-cd OpenBCI_Matlab
+OpenBCI_Matlab
 ==============
 
 This repository contains the files needed for obtaining an [OpenBCI](http://openbci.com/) data stream directly into Matlab.
@@ -173,7 +173,7 @@ There are Matlab toolboxes that have built-in methods for working with LSL strea
 
   A window should appear asking for information about the stream. Try the following into the window:
 
-  [vis_stream]: https://github.com/gabrielibagon/OpenBCI_MATLAB/raw/master/images/vis_stream.png "vis_stream screenshot"
+  ![vis_stream](https://github.com/gabrielibagon/OpenBCI_MATLAB/raw/master/images/vis_stream.png)
 
   You may need to adjust some parameters. For instance, if you are streaming 16 channels from the OpenBCI Board, you will want to type "[1:17]" in the "Channels to Display" field.
 
