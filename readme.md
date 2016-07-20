@@ -49,7 +49,7 @@ More methods currently under development!
   1. If you have pip installed, navigate to the "Matlab-Python" directory on your terminal/command line and type:
     `pip install -r requirements.txt`
 
-	> If you don't know how to navigate in your command line, read this (especially the section about "cd"): [Learning > the Shell](http://linuxcommand.org/lts0020.php)
+	> If you don't know how to navigate in your command line, read this (especially the section about "cd"): [Learning the Shell](http://linuxcommand.org/lts0020.php)
 
   2. If you do not have pip installed, manually install the two libraries:
     1. [pyserial](https://pypi.python.org/pypi/pyserial)
