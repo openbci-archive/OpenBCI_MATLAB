@@ -1,4 +1,4 @@
-cd OpenBCI_Matlab
+OpenBCI_Matlab
 ==============
 
 This repository contains the files needed for obtaining an [OpenBCI](http://openbci.com/) data stream directly into Matlab.
