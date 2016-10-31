@@ -12,7 +12,7 @@ More methods currently under development!
 **If you are running into any problems, check the "Troubleshooting" section of this guide first! If it is not covered in that section, please pull up an issue on this repo.**
 
 ## Lab Streaming Layer (Python to Matlab)
-[Lab streaming layer \(LSL\)](https://github.com/sccn/labstreaminglayer) is a networking tool that allows for real time streaming, recording, and analysis of biodata. The `openbci_pylsl` program uses Python to establish an LSL stream that can be received using scripts in Matlab. Follow the steps below to learn how to setup and begin using Matlab for real-time data analysis.
+[Lab streaming layer \(LSL\)](https://github.com/sccn/labstreaminglayer) is a networking tool that allows for real time streaming, recording, and analysis of biodata. The `openbci_matlab.py` program uses Python to establish an LSL stream that can be received using scripts in Matlab. Follow the steps below to learn how to setup and begin using Matlab for real-time data analysis.
 
 #### Steps
 * [Setup](#setup)
@@ -81,19 +81,19 @@ If you do not get a red error message, LSL is installed correctly!
 
 Getting a stream into Matlab can be done in two steps:
 
-  1) Start a stream with the `openbci_pylsl.py` program
+  1) Start a stream with the `openbci_matlab.py` program
   2) Receive the stream with an lsl script in Matlab
 
 ####**Start a stream in Python**
   1. Plug in your dongle and power up your OpenBCI Board
   2. Navigate to the "Matlab-Python" directory on your command line and enter:
-    ` python openbci_pylsl.py -p "PORT" `
+    ` python openbci_matlab.py -p "PORT" `
 
     The PORT should be replaced with the serial port that your OpenBCI dongle is plugged into, i.e. "COM1" Windows or "/dev/ttyUSB0" on Linux.
 
     If you are using the 16 channel board, add the "-d" (daisy) option:
 
-    ` python openbci_pylsl.py -p "PORT" -d `  
+    ` python openbci_matlab.py -p "PORT" -d `  
 
       >Note:
 
@@ -111,7 +111,7 @@ Getting a stream into Matlab can be done in two steps:
 
 	  For example, here is the command for my computer:
 
-        python openbci_pylsl.py -p "/dev/ttyUSB0"
+        python openbci_matlab.py -p "/dev/ttyUSB0"
 
   3. After Board initialization, you should see a "BEGIN" and a new prompt on the command line. You are now ready to start streaming!
 
