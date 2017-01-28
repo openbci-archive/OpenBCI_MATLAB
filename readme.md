@@ -1,6 +1,16 @@
 OpenBCI_Matlab
 ==============
 
+**NOTE (1/28/2017)**
+
+**This repository is deprecated. If you are interested in using OpenBCI with Matlab, please refer to the [OpenBCI_LSL](https://github.com/OpenBCI/OpenBCI_LSL) repository, which demonstrates the how to use Lab Streaming Layer (LSL) with OpenBCI**
+
+**Once LSL is running, you can receive the stream in Matlab by using the [liblsl_Matlab](https://github.com/sccn/labstreaminglayer/tree/master/LSL/liblsl-Matlab) interface maintained by SCCN, or, if you are using the BCILAB toolbox, by selecting the correct menu options (see the [BCILAB wiki](https://sccn.ucsd.edu/wiki/BCILAB)).**
+
+**If you encounter any issues, please see the [OpenBCI Forum](http://openbci.com/forum/index.php?p=/), or raise an issue on the [OpenBCI_LSL repository](https://github.com/OpenBCI/OpenBCI_LSL). Further documentation coming soon!**
+
+==============
+
 This repository contains the files needed for obtaining an [OpenBCI](http://openbci.com/) data stream directly into Matlab.
 
 Currently, there is one method for streaming data into Matlab:
